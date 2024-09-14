@@ -1,8 +1,7 @@
 {
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "https://technological-marten.super.site/$1"
+  "functions": {
+    "api/proxy.js": {
+      "runtime": "nodejs16.x"
     }
-  ]
+  }
 }
