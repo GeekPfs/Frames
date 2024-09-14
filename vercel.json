@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "https://standing-gear-ccb.notion.site/Green-Home-101473e7a2bc8043a739c5bc4920943f"
+    }
+  ]
+}
