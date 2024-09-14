@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/proxy"
+      "destination": "https://technological-marten.super.site/"
     }
   ]
 }
