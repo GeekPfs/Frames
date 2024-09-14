@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "https://technological-marten.super.site/"
+      "destination": "https://technological-marten.super.site/$1"
     }
   ]
 }
