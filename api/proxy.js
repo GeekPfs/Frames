@@ -1,9 +1,24 @@
-import fetch from 'node-fetch';
+const fetch = require('node-fetch');
 
-export default async function handler(req, res) {
-  const url = `https://technological-marten.super.site/${req.url}`;
-  const response = await fetch(url);
-  const content = await response.text();
-  res.setHeader('Content-Type', response.headers.get('Content-Type'));
-  res.send(content);
-}
+module.exports = async (req, res) => {
+  const url = 'https://paginaoriginal.com' + req.url;
+  try {
+    const response = await fetch(url);
+    const text = await response.text();
+
+    // Adicione o CSS diretamente ao HTML retornado
+    const modifiedText = text.replace(
+      '</head>',
+      `<style>
+        .super-badge {
+          display: none !important;
+        }
+      </style></head>`
+    );
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(modifiedText);
+  } catch (error) {
+    res.status(500).send('Erro ao acessar a página');
+  }
+};
