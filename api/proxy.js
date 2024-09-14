@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 
 module.exports = async (req, res) => {
-  const url = 'https://paginaoriginal.com' + req.url;
+  const url = 'https://technological-marten.super.site/' + req.url;
   try {
     const response = await fetch(url);
     const text = await response.text();
