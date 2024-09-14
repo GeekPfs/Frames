@@ -18,6 +18,15 @@
   </style>
 </head>
 <body>
-  <iframe src="https://technological-marten.super.site/"></iframe>
+  <iframe id="proxyFrame" src="https://technological-marten.super.site/"></iframe>
+  <script>
+    document.getElementById('proxyFrame').addEventListener('load', function() {
+      var iframeDoc = this.contentDocument || this.contentWindow.document;
+      var watermark = iframeDoc.querySelector('.super-badge');
+      if (watermark) {
+        watermark.remove();
+      }
+    });
+  </script>
 </body>
 </html>
