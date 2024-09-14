@@ -3,7 +3,16 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(url);
-    const body = await response.text();
+    let body = await response.text();
+
+    // Remove ou modifica cabeçalhos que podem bloquear iframes
+    body = body.replace(
+      /<meta http-equiv="Content-Security-Policy"[^>]*>/gi,
+      '<meta http-equiv="Content-Security-Policy" content="frame-ancestors *;">'
+    ).replace(
+      /<meta http-equiv="X-Frame-Options"[^>]*>/gi,
+      ''
+    );
 
     // Adiciona o CSS para esconder a marca d'água
     const modifiedBody = body.replace(
