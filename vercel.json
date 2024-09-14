@@ -1,9 +1,5 @@
 {
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "https://technological-marten.super.site/$1"
-    }
-
+    { "source": "/(.*)", "destination": "/api/proxy" }
   ]
-} 
+}
