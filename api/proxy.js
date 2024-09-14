@@ -15,13 +15,18 @@ export default async function handler(req, res) {
     );
 
     // Adiciona o CSS para esconder a marca d'água
-    const modifiedBody = body.replace(
+    body = body.replace(
       '</head>',
       '<style>.super-badge { display: none !important; }</style></head>'
     );
 
+    // Corrige URLs de recursos para serem absolutos
+    body = body.replace(/href="\/(?!\/)/g, 'href="https://technological-marten.super.site/')
+               .replace(/src="\/(?!\/)/g, 'src="https://technological-marten.super.site/');
+
     res.setHeader('Content-Type', 'text/html');
-    res.status(response.status).send(modifiedBody);
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Adiciona cabeçalho CORS
+    res.status(response.status).send(body);
   } catch (error) {
     console.error('Error fetching the page:', error);
     res.status(500).send('Error fetching the page');
