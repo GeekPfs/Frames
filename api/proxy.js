@@ -1,34 +1,68 @@
 export default async function handler(req, res) {
-  const url = `https://wisp.super.site/${req.url}`;
-
   try {
-    const response = await fetch(url);
-    let body = await response.text();
+    // Remove o prefixo da API da URL
+    const path = req.url.replace(/^\/api\/proxy/, '');
 
-    // Remove ou modifica cabeçalhos que podem bloquear iframes
-    body = body.replace(
-      /<meta http-equiv="Content-Security-Policy"[^>]*>/gi,
-      '<meta http-equiv="Content-Security-Policy" content="frame-ancestors *;">'
-    ).replace(
-      /<meta http-equiv="X-Frame-Options"[^>]*>/gi,
-      ''
+    // URL do Super
+    const targetUrl = `https://technological-marten.super.site${path}`;
+
+    // Faz a requisição
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': req.headers['user-agent'] || '',
+      },
+    });
+
+    // Copia status
+    res.statusCode = response.status;
+
+    // Cache agressivo na CDN da Vercel
+    res.setHeader(
+      'Cache-Control',
+      'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
-    // Adiciona o CSS para esconder a marca d'água
-    body = body.replace(
-      '</head>',
-      '<style>.super-badge { display: none !important; }</style></head>'
-    );
+    // Copia content-type original
+    const contentType = response.headers.get('content-type') || '';
 
-    // Corrige URLs de recursos para serem absolutos
-    body = body.replace(/href="\/(?!\/)/g, 'href="https://wisp.super.site/')
-               .replace(/src="\/(?!\/)/g, 'src="https://wisp.super.site/');
+    if (contentType.includes('text/html')) {
+      // Só processa HTML
+      let body = await response.text();
 
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Adiciona cabeçalho CORS
-    res.status(response.status).send(body);
-  } catch (error) {
-    console.error('Error fetching the page:', error);
-    res.status(500).send('Error fetching the page');
+      // Remove badge do Super
+      body = body.replace(
+        '</head>',
+        `
+        <style>
+          .super-badge,
+          a[href*="super.so"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
+        </style>
+        </head>
+        `
+      );
+
+      // Corrige assets relativos
+      body = body
+        .replace(/(href|src)="\/(?!\/)/g, `$1="https://technological-marten.super.site/`);
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+      return res.send(body);
+    }
+
+    // Assets NÃO passam por replace
+    // Stream direto = muito mais rápido
+    res.setHeader('Content-Type', contentType);
+
+    response.body.pipe(res);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
   }
 }
