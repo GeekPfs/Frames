@@ -2,13 +2,11 @@ export default async function handler(req, res) {
   try {
     const origin = 'https://wisp.super.site';
 
-    // remove /api/proxy da URL
     const path =
       req.url.replace(/^\/api\/proxy/, '') || '/';
 
     const targetUrl = `${origin}${path}`;
 
-    // request original
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent':
@@ -21,40 +19,64 @@ export default async function handler(req, res) {
 
     res.status(response.status);
 
-    // cache CDN
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
-    // páginas HTML
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // corrige assets relativos
+      // assets relativos
       body = body.replace(
         /(src|href)="\/(?!\/)/g,
         `$1="${origin}/`
       );
 
-      // mantém navegação no proxy
+      // links internos continuam no proxy
       body = body.replace(
         /<a([^>]+)href="https:\/\/wisp\.super\.site(.*?)"/g,
         '<a$1href="/api/proxy$2"'
       );
 
-      // injeta estilos + botão de tema
       body = body.replace(
-        '</body>',
+        '</head>',
         `
         <style>
+          :root {
+            --bg-light: #f0f0f0;
+            --text-light: #111111;
+
+            --bg-dark: #111111;
+            --text-dark: #f0f0f0;
+          }
+
+          html.theme-light,
+          html.theme-light body {
+            background: var(--bg-light) !important;
+            color: var(--text-light) !important;
+          }
+
+          html.theme-dark,
+          html.theme-dark body {
+            background: var(--bg-dark) !important;
+            color: var(--text-dark) !important;
+          }
+
+          html.theme-light * {
+            border-color:
+              rgba(0,0,0,.08) !important;
+          }
+
+          html.theme-dark * {
+            border-color:
+              rgba(255,255,255,.08) !important;
+          }
+
           .super-badge,
           a[href*="super.so"],
           a[href*="super.site"][style*="position: fixed"] {
             display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
           }
 
           .notion-navbar__actions {
@@ -64,11 +86,11 @@ export default async function handler(req, res) {
           }
 
           #theme-toggle {
-            width: 32px;
-            height: 32px;
+            width: 34px;
+            height: 34px;
 
             border-radius: 999px;
-            border: 1px solid var(--color-border-default);
+            border: none;
 
             display: flex;
             align-items: center;
@@ -76,35 +98,56 @@ export default async function handler(req, res) {
 
             cursor: pointer;
 
-            color: inherit;
-            background: var(--color-bg-secondary);
-
             transition:
-              background .2s ease,
               transform .2s ease,
-              opacity .2s ease,
-              border-color .2s ease;
+              background .2s ease;
+          }
+
+          html.theme-light #theme-toggle {
+            background: #111111;
+            color: #f0f0f0;
+          }
+
+          html.theme-dark #theme-toggle {
+            background: #f0f0f0;
+            color: #111111;
           }
 
           #theme-toggle:hover {
-            background: var(--color-bg-hover);
             transform: scale(1.05);
           }
 
           #theme-toggle svg {
-            width: 17px;
-            height: 17px;
+            width: 18px;
+            height: 18px;
 
             stroke: currentColor;
             fill: none;
             stroke-width: 2;
           }
         </style>
+        </head>
+        `
+      );
 
+      body = body.replace(
+        '</body>',
+        `
         <script>
           (() => {
             const html =
               document.documentElement;
+
+            // tema inicial
+            if (
+              !html.classList.contains(
+                'theme-dark'
+              )
+            ) {
+              html.classList.add(
+                'theme-light'
+              );
+            }
 
             function injectButton() {
               const actions =
@@ -120,7 +163,6 @@ export default async function handler(req, res) {
                 return;
               }
 
-              // evita duplicação
               if (
                 document.getElementById(
                   'theme-toggle'
@@ -171,12 +213,11 @@ export default async function handler(req, res) {
               }
 
               function updateIcon() {
-                const isDark =
+                if (
                   html.classList.contains(
                     'theme-dark'
-                  );
-
-                if (isDark) {
+                  )
+                ) {
                   setSun();
                 } else {
                   setMoon();
@@ -186,19 +227,19 @@ export default async function handler(req, res) {
               button.addEventListener(
                 'click',
                 () => {
-                  const isDark =
+                  const dark =
                     html.classList.contains(
                       'theme-dark'
                     );
 
                   html.classList.toggle(
                     'theme-dark',
-                    !isDark
+                    !dark
                   );
 
                   html.classList.toggle(
                     'theme-light',
-                    isDark
+                    dark
                   );
 
                   updateIcon();
@@ -213,7 +254,6 @@ export default async function handler(req, res) {
             injectButton();
           })();
         </script>
-
         </body>
         `
       );
@@ -226,7 +266,6 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
-    // assets
     res.setHeader(
       'Content-Type',
       contentType
