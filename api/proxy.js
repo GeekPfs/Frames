@@ -2,11 +2,13 @@ export default async function handler(req, res) {
   try {
     const origin = 'https://wisp.super.site';
 
+    // Remove prefixo da API
     const path =
       req.url.replace(/^\/api\/proxy/, '') || '/';
 
     const targetUrl = `${origin}${path}`;
 
+    // Busca página original
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': req.headers['user-agent'] || '',
@@ -40,7 +42,7 @@ export default async function handler(req, res) {
         '<a$1href="/api/proxy$2"'
       );
 
-      // Remove badge + botão tema
+      // Remove badge + adiciona botão de tema
       body = body.replace(
         '</body>',
         `
@@ -54,13 +56,15 @@ export default async function handler(req, res) {
             pointer-events: none !important;
           }
 
-          #theme-toggle {
-            position: fixed;
-            top: 18px;
-            right: 18px;
+          .notion-navbar__actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
 
-            width: 38px;
-            height: 38px;
+          #theme-toggle {
+            width: 32px;
+            height: 32px;
 
             border: none;
             border-radius: 999px;
@@ -71,114 +75,151 @@ export default async function handler(req, res) {
 
             cursor: pointer;
 
-            z-index: 999999;
-
-            background: rgba(255,255,255,0.06);
-            backdrop-filter: blur(10px);
+            background: transparent;
 
             transition:
-              transform .2s ease,
               background .2s ease,
+              transform .2s ease,
               opacity .2s ease;
           }
 
           #theme-toggle:hover {
+            background: rgba(127,127,127,.12);
             transform: scale(1.05);
-            background: rgba(255,255,255,0.12);
-          }
-
-          html.theme-light #theme-toggle {
-            background: rgba(0,0,0,0.06);
-          }
-
-          html.theme-light #theme-toggle:hover {
-            background: rgba(0,0,0,0.10);
           }
 
           #theme-toggle svg {
-            width: 18px;
-            height: 18px;
+            width: 17px;
+            height: 17px;
 
             stroke: currentColor;
             fill: none;
             stroke-width: 2;
-
-            transition:
-              opacity .2s ease,
-              transform .2s ease;
           }
 
           html.theme-dark #theme-toggle {
-            color: white;
+            color: rgba(255,255,255,.85);
           }
 
           html.theme-light #theme-toggle {
-            color: black;
+            color: rgba(0,0,0,.75);
           }
         </style>
 
-        <button id="theme-toggle" aria-label="Toggle theme">
-          <svg id="theme-icon" viewBox="0 0 24 24">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3c0 .28.02.56.05.83A7 7 0 0 0 20.17 12c.27.03.55.05.83.05Z"/>
-          </svg>
-        </button>
-
         <script>
           (() => {
-            const button =
-              document.getElementById('theme-toggle');
-
-            const icon =
-              document.getElementById('theme-icon');
-
             const html =
               document.documentElement;
 
-            function setMoon() {
-              icon.innerHTML = \`
-                <path d="M21 12.79A9 9 0 1 1 11.21 3c0 .28.02.56.05.83A7 7 0 0 0 20.17 12c.27.03.55.05.83.05Z"/>
-              \`;
-            }
+            function injectButton() {
+              const actions =
+                document.querySelector(
+                  '.notion-navbar__actions'
+                );
 
-            function setSun() {
-              icon.innerHTML = \`
-                <circle cx="12" cy="12" r="4"></circle>
-                <path d="M12 2v2"></path>
-                <path d="M12 20v2"></path>
-                <path d="m4.93 4.93 1.41 1.41"></path>
-                <path d="m17.66 17.66 1.41 1.41"></path>
-                <path d="M2 12h2"></path>
-                <path d="M20 12h2"></path>
-                <path d="m6.34 17.66-1.41 1.41"></path>
-                <path d="m19.07 4.93-1.41 1.41"></path>
-              \`;
-            }
-
-            function updateIcon() {
-              if (
-                html.classList.contains('theme-dark')
-              ) {
-                setSun();
-              } else {
-                setMoon();
+              if (!actions) {
+                requestAnimationFrame(
+                  injectButton
+                );
+                return;
               }
-            }
 
-            button.addEventListener('click', () => {
+              // evita duplicação
               if (
-                html.classList.contains('theme-dark')
+                document.getElementById(
+                  'theme-toggle'
+                )
               ) {
-                html.classList.remove('theme-dark');
-                html.classList.add('theme-light');
-              } else {
-                html.classList.remove('theme-light');
-                html.classList.add('theme-dark');
+                return;
               }
+
+              const button =
+                document.createElement(
+                  'button'
+                );
+
+              button.id = 'theme-toggle';
+
+              const icon =
+                document.createElementNS(
+                  'http://www.w3.org/2000/svg',
+                  'svg'
+                );
+
+              icon.setAttribute(
+                'viewBox',
+                '0 0 24 24'
+              );
+
+              button.appendChild(icon);
+
+              function setMoon() {
+                icon.innerHTML = \`
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3c0 .28.02.56.05.83A7 7 0 0 0 20.17 12c.27.03.55.05.83.05Z"/>
+                \`;
+              }
+
+              function setSun() {
+                icon.innerHTML = \`
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <path d="M12 2v2"></path>
+                  <path d="M12 20v2"></path>
+                  <path d="m4.93 4.93 1.41 1.41"></path>
+                  <path d="m17.66 17.66 1.41 1.41"></path>
+                  <path d="M2 12h2"></path>
+                  <path d="M20 12h2"></path>
+                  <path d="m6.34 17.66-1.41 1.41"></path>
+                  <path d="m19.07 4.93-1.41 1.41"></path>
+                \`;
+              }
+
+              function updateIcon() {
+                if (
+                  html.classList.contains(
+                    'theme-dark'
+                  )
+                ) {
+                  setSun();
+                } else {
+                  setMoon();
+                }
+              }
+
+              button.addEventListener(
+                'click',
+                () => {
+                  if (
+                    html.classList.contains(
+                      'theme-dark'
+                    )
+                  ) {
+                    html.classList.remove(
+                      'theme-dark'
+                    );
+
+                    html.classList.add(
+                      'theme-light'
+                    );
+                  } else {
+                    html.classList.remove(
+                      'theme-light'
+                    );
+
+                    html.classList.add(
+                      'theme-dark'
+                    );
+                  }
+
+                  updateIcon();
+                }
+              );
 
               updateIcon();
-            });
 
-            updateIcon();
+              actions.appendChild(button);
+            }
+
+            injectButton();
           })();
         </script>
 
@@ -195,7 +236,10 @@ export default async function handler(req, res) {
     }
 
     // Assets
-    res.setHeader('Content-Type', contentType);
+    res.setHeader(
+      'Content-Type',
+      contentType
+    );
 
     if (response.body) {
       response.body.pipe(res);
@@ -205,6 +249,8 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error(err);
-    res.status(500).send('Internal Server Error');
+    res
+      .status(500)
+      .send('Internal Server Error');
   }
 }
