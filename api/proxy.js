@@ -1,19 +1,14 @@
 export default async function handler(req, res) {
   try {
-    // Remove prefixo da rota API
-    const path = req.url.replace(/^\/api\/proxy/, '');
+    // Remove a rota da API
+    const path = req.url.replace(/^\/api\/proxy/, '') || '/';
 
-    // Domínio original
-    const targetOrigin = 'https://wisp.super.site';
-
-    // Seu domínio atual
-    const proxyOrigin =
-      `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}`;
+    // Domínio do Super
+    const origin = 'https://wisp.super.site';
 
     // URL final
-    const targetUrl = `${targetOrigin}${path}`;
+    const targetUrl = `${origin}${path}`;
 
-    // Request
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': req.headers['user-agent'] || '',
@@ -22,8 +17,7 @@ export default async function handler(req, res) {
 
     const contentType = response.headers.get('content-type') || '';
 
-    // Status original
-    res.statusCode = response.status;
+    res.status(response.status);
 
     // Cache CDN
     res.setHeader(
@@ -35,14 +29,14 @@ export default async function handler(req, res) {
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // Remove marca d’água
+      // Remove badge
       body = body.replace(
         '</head>',
         `
         <style>
           .super-badge,
           a[href*="super.so"],
-          a[href*="super.site"] {
+          a[href*="super.site"][style*="position: fixed"] {
             display: none !important;
             visibility: hidden !important;
             opacity: 0 !important;
@@ -53,30 +47,41 @@ export default async function handler(req, res) {
         `
       );
 
-      // Corrige assets relativos
+      // Faz links internos continuarem no proxy
       body = body.replace(
-        /(href|src)="\/(?!\/)/g,
-        `$1="${targetOrigin}/`
+        /href="https:\/\/wisp\.super\.site(.*?)"/g,
+        'href="/api/proxy$1"'
       );
 
-      // Reescreve links absolutos
-      body = body.replaceAll(
-        targetOrigin,
-        proxyOrigin
+      body = body.replace(
+        /href="\/(?!\/)(.*?)"/g,
+        'href="/api/proxy/$1"'
       );
 
-      res.setHeader(
-        'Content-Type',
-        'text/html; charset=utf-8'
+      // Corrige assets absolutos
+      body = body.replace(
+        /(src|href)="\/_next\//g,
+        `$1="${origin}/_next/`
       );
+
+      body = body.replace(
+        /(src|href)="\/images\//g,
+        `$1="${origin}/images/`
+      );
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
       return res.send(body);
     }
 
-    // Assets: stream direto
+    // Stream de assets
     res.setHeader('Content-Type', contentType);
 
-    response.body.pipe(res);
+    if (response.body) {
+      response.body.pipe(res);
+    } else {
+      res.end();
+    }
 
   } catch (err) {
     console.error(err);
