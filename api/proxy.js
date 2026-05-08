@@ -1,32 +1,35 @@
 export default async function handler(req, res) {
   try {
+    // Remove o prefixo da API da URL
     const path = req.url.replace(/^\/api\/proxy/, '');
 
-    const targetUrl =
-      `https://technological-marten.super.site${path}`;
+    // URL do Super
+    const targetUrl = `https://wisp.super.site${path}`;
 
+    // Faz a requisição
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': req.headers['user-agent'] || '',
       },
     });
 
-    const contentType =
-      response.headers.get('content-type') || '';
+    // Copia status
+    res.statusCode = response.status;
 
-    res.status(response.status);
-
-    // Cache CDN
+    // Cache agressivo na CDN da Vercel
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
-    // HTML
+    // Copia content-type original
+    const contentType = response.headers.get('content-type') || '';
+
     if (contentType.includes('text/html')) {
+      // Só processa HTML
       let body = await response.text();
 
-      // Remove badge
+      // Remove badge do Super
       body = body.replace(
         '</head>',
         `
@@ -34,6 +37,9 @@ export default async function handler(req, res) {
           .super-badge,
           a[href*="super.so"] {
             display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
           }
         </style>
         </head>
@@ -41,29 +47,22 @@ export default async function handler(req, res) {
       );
 
       // Corrige assets relativos
-      body = body.replace(
-        /(href|src)="\/(?!\/)/g,
-        `$1="https://technological-marten.super.site/`
-      );
+      body = body
+        .replace(/(href|src)="\/(?!\/)/g, `$1="https://wisp.super.site/`);
 
-      res.setHeader(
-        'Content-Type',
-        'text/html; charset=utf-8'
-      );
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
       return res.send(body);
     }
 
-    // Assets
-    const buffer = Buffer.from(await response.arrayBuffer());
-
+    // Assets NÃO passam por replace
+    // Stream direto = muito mais rápido
     res.setHeader('Content-Type', contentType);
 
-    return res.send(buffer);
+    response.body.pipe(res);
 
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).send('Internal Server Error');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
   }
 }
