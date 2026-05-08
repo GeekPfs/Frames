@@ -1,12 +1,8 @@
 export default async function handler(req, res) {
   try {
-    // Remove a rota da API
     const path = req.url.replace(/^\/api\/proxy/, '') || '/';
 
-    // Domínio do Super
     const origin = 'https://wisp.super.site';
-
-    // URL final
     const targetUrl = `${origin}${path}`;
 
     const response = await fetch(targetUrl, {
@@ -19,7 +15,7 @@ export default async function handler(req, res) {
 
     res.status(response.status);
 
-    // Cache CDN
+    // Cache
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
@@ -47,26 +43,15 @@ export default async function handler(req, res) {
         `
       );
 
-      // Faz links internos continuarem no proxy
+      // Reescreve SOMENTE links de navegação
       body = body.replace(
-        /href="https:\/\/wisp\.super\.site(.*?)"/g,
-        'href="/api/proxy$1"'
+        /<a([^>]+)href="https:\/\/wisp\.super\.site(.*?)"/g,
+        '<a$1href="/api/proxy$2"'
       );
 
       body = body.replace(
-        /href="\/(?!\/)(.*?)"/g,
-        'href="/api/proxy/$1"'
-      );
-
-      // Corrige assets absolutos
-      body = body.replace(
-        /(src|href)="\/_next\//g,
-        `$1="${origin}/_next/`
-      );
-
-      body = body.replace(
-        /(src|href)="\/images\//g,
-        `$1="${origin}/images/`
+        /<a([^>]+)href="\/(?!\/)(.*?)"/g,
+        '<a$1href="/api/proxy/$2"'
       );
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -74,7 +59,7 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
-    // Stream de assets
+    // Assets: stream direto
     res.setHeader('Content-Type', contentType);
 
     if (response.body) {
