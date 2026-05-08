@@ -1,8 +1,10 @@
 export default async function handler(req, res) {
   try {
-    const path = req.url.replace(/^\/api\/proxy/, '') || '/';
-
     const origin = 'https://wisp.super.site';
+
+    const path =
+      req.url.replace(/^\/api\/proxy/, '') || '/';
+
     const targetUrl = `${origin}${path}`;
 
     const response = await fetch(targetUrl, {
@@ -11,11 +13,11 @@ export default async function handler(req, res) {
       },
     });
 
-    const contentType = response.headers.get('content-type') || '';
+    const contentType =
+      response.headers.get('content-type') || '';
 
     res.status(response.status);
 
-    // Cache
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
@@ -43,23 +45,27 @@ export default async function handler(req, res) {
         `
       );
 
-      // Reescreve SOMENTE links de navegação
+      // Faz TODOS assets virarem absolutos
+      body = body.replace(
+        /(src|href)="\/(?!\/)/g,
+        `$1="${origin}/`
+      );
+
+      // Navegação interna continua no proxy
       body = body.replace(
         /<a([^>]+)href="https:\/\/wisp\.super\.site(.*?)"/g,
         '<a$1href="/api/proxy$2"'
       );
 
-      body = body.replace(
-        /<a([^>]+)href="\/(?!\/)(.*?)"/g,
-        '<a$1href="/api/proxy/$2"'
+      res.setHeader(
+        'Content-Type',
+        'text/html; charset=utf-8'
       );
-
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
 
       return res.send(body);
     }
 
-    // Assets: stream direto
+    // Stream de assets
     res.setHeader('Content-Type', contentType);
 
     if (response.body) {
