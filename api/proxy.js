@@ -19,26 +19,36 @@ export default async function handler(req, res) {
 
     res.status(response.status);
 
+    // cache
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
+    // assets
+    if (
+      contentType.includes('javascript') ||
+      contentType.includes('css') ||
+      contentType.includes('image') ||
+      contentType.includes('font')
+    ) {
+      res.setHeader(
+        'Cache-Control',
+        'public, max-age=31536000, immutable'
+      );
+    }
+
+    // html
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // assets relativos
+      // corrige assets relativos
       body = body.replace(
         /(src|href)="\/(?!\/)/g,
         `$1="${origin}/`
       );
 
-      // links internos continuam no proxy
-      body = body.replace(
-        /<a([^>]+)href="https:\/\/wisp\.super\.site(.*?)"/g,
-        '<a$1href="/api/proxy$2"'
-      );
-
+      // css
       body = body.replace(
         '</head>',
         `
@@ -51,26 +61,29 @@ export default async function handler(req, res) {
             --text-dark: #f0f0f0;
           }
 
+          html,
+          body {
+            transition:
+              background .25s ease,
+              color .25s ease;
+          }
+
           html.theme-light,
           html.theme-light body {
-            background: var(--bg-light) !important;
-            color: var(--text-light) !important;
+            background:
+              var(--bg-light) !important;
+
+            color:
+              var(--text-light) !important;
           }
 
           html.theme-dark,
           html.theme-dark body {
-            background: var(--bg-dark) !important;
-            color: var(--text-dark) !important;
-          }
+            background:
+              var(--bg-dark) !important;
 
-          html.theme-light * {
-            border-color:
-              rgba(0,0,0,.08) !important;
-          }
-
-          html.theme-dark * {
-            border-color:
-              rgba(255,255,255,.08) !important;
+            color:
+              var(--text-dark) !important;
           }
 
           .super-badge,
@@ -89,8 +102,8 @@ export default async function handler(req, res) {
             width: 34px;
             height: 34px;
 
-            border-radius: 999px;
             border: none;
+            border-radius: 999px;
 
             display: flex;
             align-items: center;
@@ -100,7 +113,7 @@ export default async function handler(req, res) {
 
             transition:
               transform .2s ease,
-              background .2s ease;
+              opacity .2s ease;
           }
 
           html.theme-light #theme-toggle {
@@ -130,6 +143,7 @@ export default async function handler(req, res) {
         `
       );
 
+      // js
       body = body.replace(
         '</body>',
         `
@@ -138,16 +152,45 @@ export default async function handler(req, res) {
             const html =
               document.documentElement;
 
-            // tema inicial
-            if (
-              !html.classList.contains(
-                'theme-dark'
-              )
-            ) {
-              html.classList.add(
-                'theme-light'
-              );
-            }
+            // força dark inicial
+            html.classList.remove(
+              'theme-light'
+            );
+
+            html.classList.add(
+              'theme-dark'
+            );
+
+            // navegação interna
+            document.addEventListener(
+              'click',
+              e => {
+                const a =
+                  e.target.closest('a');
+
+                if (!a) return;
+
+                const href = a.href;
+
+                if (
+                  href &&
+                  href.startsWith(
+                    'https://wisp.super.site'
+                  )
+                ) {
+                  e.preventDefault();
+
+                  const proxied =
+                    href.replace(
+                      'https://wisp.super.site',
+                      '/api/proxy'
+                    );
+
+                  window.location.href =
+                    proxied;
+                }
+              }
+            );
 
             function injectButton() {
               const actions =
@@ -156,8 +199,9 @@ export default async function handler(req, res) {
                 );
 
               if (!actions) {
-                requestAnimationFrame(
-                  injectButton
+                setTimeout(
+                  injectButton,
+                  100
                 );
 
                 return;
@@ -213,11 +257,12 @@ export default async function handler(req, res) {
               }
 
               function updateIcon() {
-                if (
+                const dark =
                   html.classList.contains(
                     'theme-dark'
-                  )
-                ) {
+                  );
+
+                if (dark) {
                   setSun();
                 } else {
                   setMoon();
@@ -232,23 +277,44 @@ export default async function handler(req, res) {
                       'theme-dark'
                     );
 
-                  html.classList.toggle(
-                    'theme-dark',
-                    !dark
-                  );
+                  // dark -> light
+                  if (dark) {
+                    html.style.transition =
+                      'background .25s ease, color .25s ease';
 
-                  html.classList.toggle(
-                    'theme-light',
-                    dark
-                  );
+                    setTimeout(() => {
+                      html.classList.remove(
+                        'theme-dark'
+                      );
 
-                  updateIcon();
+                      html.classList.add(
+                        'theme-light'
+                      );
+
+                      updateIcon();
+                    }, 120);
+                  }
+
+                  // light -> dark
+                  else {
+                    html.classList.remove(
+                      'theme-light'
+                    );
+
+                    html.classList.add(
+                      'theme-dark'
+                    );
+
+                    updateIcon();
+                  }
                 }
               );
 
               updateIcon();
 
-              actions.appendChild(button);
+              actions.appendChild(
+                button
+              );
             }
 
             injectButton();
@@ -266,6 +332,7 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
+    // assets
     res.setHeader(
       'Content-Type',
       contentType
