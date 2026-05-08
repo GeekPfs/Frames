@@ -23,73 +23,69 @@ export default async function handler(req, res) {
       'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
-    // HTML
+    // Só HTML
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // Corrige assets
-      body = body.replace(
-        /(src|href)="\/(?!\/)/g,
-        `$1="${origin}/`
-      );
-
-      // Injeta CSS + script
+      // Injeta SEM alterar estrutura original
       body = body.replace(
         '</head>',
         `
-        <style>
-          .super-badge,
-          a[href*="super.so"],
-          a[href*="super.site"][style*="position: fixed"] {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-          }
-        </style>
+          <base href="${origin}/">
 
-        <script>
-          document.addEventListener('click', function(e) {
-            const link = e.target.closest('a');
-
-            if (!link) return;
-
-            const href = link.getAttribute('href');
-
-            if (!href) return;
-
-            // Ignora externos
-            if (
-              href.startsWith('http') &&
-              !href.includes('wisp.super.site')
-            ) {
-              return;
+          <style>
+            .super-badge,
+            a[href*="super.so"],
+            a[href*="super.site"][style*="position: fixed"] {
+              display: none !important;
+              opacity: 0 !important;
+              pointer-events: none !important;
             }
+          </style>
 
-            // Ignora anchors/mailto/etc
-            if (
-              href.startsWith('#') ||
-              href.startsWith('mailto:') ||
-              href.startsWith('tel:')
-            ) {
-              return;
-            }
+          <script>
+            (() => {
+              document.addEventListener('click', e => {
+                const a = e.target.closest('a');
 
-            e.preventDefault();
+                if (!a) return;
 
-            let path = href;
+                const href = a.getAttribute('href');
 
-            if (href.startsWith('https://wisp.super.site')) {
-              path = href.replace(
-                'https://wisp.super.site',
-                ''
-              );
-            }
+                if (!href) return;
 
-            window.location.href =
-              '/api/proxy' + path;
-          });
-        </script>
+                // ignora externos
+                if (
+                  href.startsWith('http') &&
+                  !href.includes('wisp.super.site')
+                ) return;
+
+                // ignora especiais
+                if (
+                  href.startsWith('#') ||
+                  href.startsWith('mailto:') ||
+                  href.startsWith('tel:')
+                ) return;
+
+                e.preventDefault();
+
+                let path = href;
+
+                if (
+                  href.startsWith('https://wisp.super.site')
+                ) {
+                  path = href.replace(
+                    'https://wisp.super.site',
+                    ''
+                  );
+                }
+
+                history.pushState({}, '', '/api/proxy' + path);
+
+                location.reload();
+              });
+            })();
+          </script>
 
         </head>
         `
@@ -103,7 +99,7 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
-    // Assets
+    // Assets sem modificar
     res.setHeader('Content-Type', contentType);
 
     if (response.body) {
