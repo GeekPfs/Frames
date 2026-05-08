@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         `$1="${origin}/`
       );
 
-      // Remove badge + corrige tema
+      // Remove badge + scripts
       body = body.replace(
         '</head>',
         `
@@ -49,45 +49,19 @@ export default async function handler(req, res) {
         </style>
 
         <script>
-          // Corrige toggle de tema
+          // Persistência de tema
           (() => {
-            const applyTheme = () => {
-              const saved =
-                localStorage.getItem('theme');
+            const saved =
+              localStorage.getItem('theme');
 
-              if (
-                saved === 'dark' ||
-                document.documentElement.classList.contains('dark')
-              ) {
-                document.documentElement.classList.add('dark');
-              } else {
-                document.documentElement.classList.remove('dark');
-              }
-            };
-
-            applyTheme();
-
-            // Observa mudanças do tema
-            const observer = new MutationObserver(() => {
-              const dark =
-                document.documentElement.classList.contains('dark');
-
-              localStorage.setItem(
-                'theme',
-                dark ? 'dark' : 'light'
-              );
-            });
-
-            observer.observe(
-              document.documentElement,
-              {
-                attributes: true,
-                attributeFilter: ['class']
-              }
-            );
+            if (saved === 'dark') {
+              document.documentElement.classList.add('dark');
+            } else if (saved === 'light') {
+              document.documentElement.classList.remove('dark');
+            }
           })();
 
-          // Navegação pelo proxy
+          // Navegação via proxy
           document.addEventListener('click', e => {
             const a = e.target.closest('a');
 
@@ -129,6 +103,65 @@ export default async function handler(req, res) {
 
             window.location.href =
               '/api/proxy' + path;
+          });
+
+          // Corrige botão de tema
+          window.addEventListener('load', () => {
+            const setupThemeButtons = () => {
+              const buttons =
+                document.querySelectorAll('button');
+
+              buttons.forEach(btn => {
+                if (btn.dataset.themeFixed) return;
+
+                const hasSun =
+                  btn.querySelector('.lucide-sun');
+
+                const hasMoon =
+                  btn.querySelector('.lucide-moon');
+
+                if (!hasSun && !hasMoon) return;
+
+                btn.dataset.themeFixed = 'true';
+
+                btn.addEventListener('click', e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  const html =
+                    document.documentElement;
+
+                  const isDark =
+                    html.classList.contains('dark');
+
+                  if (isDark) {
+                    html.classList.remove('dark');
+                    localStorage.setItem(
+                      'theme',
+                      'light'
+                    );
+                  } else {
+                    html.classList.add('dark');
+                    localStorage.setItem(
+                      'theme',
+                      'dark'
+                    );
+                  }
+                });
+              });
+            };
+
+            setupThemeButtons();
+
+            const observer =
+              new MutationObserver(() => {
+                setupThemeButtons();
+              });
+
+            observer.observe(document.body, {
+              childList: true,
+              subtree: true
+            });
           });
         </script>
 
