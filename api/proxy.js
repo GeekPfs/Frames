@@ -2,11 +2,13 @@ export default async function handler(req, res) {
   try {
     const origin = 'https://wisp.super.site';
 
+    // Remove prefixo da API
     const path =
       req.url.replace(/^\/api\/proxy/, '') || '/';
 
     const targetUrl = `${origin}${path}`;
 
+    // Busca página original
     const response = await fetch(targetUrl, {
       headers: {
         'User-Agent': req.headers['user-agent'] || '',
@@ -18,6 +20,7 @@ export default async function handler(req, res) {
 
     res.status(response.status);
 
+    // Cache CDN
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
@@ -27,15 +30,21 @@ export default async function handler(req, res) {
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // Corrige assets
+      // Corrige assets relativos
       body = body.replace(
         /(src|href)="\/(?!\/)/g,
         `$1="${origin}/`
       );
 
-      // Remove badge + scripts
+      // Navegação interna continua no proxy
       body = body.replace(
-        '</head>',
+        /<a([^>]+)href="https:\/\/wisp\.super\.site(.*?)"/g,
+        '<a$1href="/api/proxy$2"'
+      );
+
+      // Remove badge + adiciona botão de tema
+      body = body.replace(
+        '</body>',
         `
         <style>
           .super-badge,
@@ -46,126 +55,91 @@ export default async function handler(req, res) {
             opacity: 0 !important;
             pointer-events: none !important;
           }
+
+          #theme-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+
+            width: 42px;
+            height: 42px;
+
+            border: none;
+            border-radius: 999px;
+
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+
+            color: white;
+            font-size: 18px;
+
+            cursor: pointer;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            transition:
+              background 0.2s ease,
+              transform 0.2s ease,
+              opacity 0.2s ease;
+
+            z-index: 999999;
+          }
+
+          #theme-toggle:hover {
+            transform: scale(1.08);
+            background: rgba(255,255,255,0.14);
+          }
+
+          html.theme-light #theme-toggle {
+            color: black;
+            background: rgba(0,0,0,0.08);
+          }
+
+          html.theme-light #theme-toggle:hover {
+            background: rgba(0,0,0,0.14);
+          }
         </style>
 
+        <button id="theme-toggle">
+          ☀️
+        </button>
+
         <script>
-          // Persistência de tema
           (() => {
-            const saved =
-              localStorage.getItem('theme');
+            const button =
+              document.getElementById('theme-toggle');
 
-            if (saved === 'dark') {
-              document.documentElement.classList.add('dark');
-            } else if (saved === 'light') {
-              document.documentElement.classList.remove('dark');
-            }
-          })();
+            const html =
+              document.documentElement;
 
-          // Navegação via proxy
-          document.addEventListener('click', e => {
-            const a = e.target.closest('a');
-
-            if (!a) return;
-
-            const href = a.getAttribute('href');
-
-            if (!href) return;
-
-            // externos
-            if (
-              href.startsWith('http') &&
-              !href.includes('wisp.super.site')
-            ) {
-              return;
+            function updateIcon() {
+              button.textContent =
+                html.classList.contains('theme-dark')
+                  ? '☀️'
+                  : '🌙';
             }
 
-            // especiais
-            if (
-              href.startsWith('#') ||
-              href.startsWith('mailto:') ||
-              href.startsWith('tel:')
-            ) {
-              return;
-            }
+            button.addEventListener('click', () => {
+              if (
+                html.classList.contains('theme-dark')
+              ) {
+                html.classList.remove('theme-dark');
+                html.classList.add('theme-light');
+              } else {
+                html.classList.remove('theme-light');
+                html.classList.add('theme-dark');
+              }
 
-            e.preventDefault();
-
-            let path = href;
-
-            if (
-              href.startsWith('https://wisp.super.site')
-            ) {
-              path = href.replace(
-                'https://wisp.super.site',
-                ''
-              );
-            }
-
-            window.location.href =
-              '/api/proxy' + path;
-          });
-
-          // Corrige botão de tema
-          window.addEventListener('load', () => {
-            const setupThemeButtons = () => {
-              const buttons =
-                document.querySelectorAll('button');
-
-              buttons.forEach(btn => {
-                if (btn.dataset.themeFixed) return;
-
-                const hasSun =
-                  btn.querySelector('.lucide-sun');
-
-                const hasMoon =
-                  btn.querySelector('.lucide-moon');
-
-                if (!hasSun && !hasMoon) return;
-
-                btn.dataset.themeFixed = 'true';
-
-                btn.addEventListener('click', e => {
-                  e.preventDefault();
-                  e.stopPropagation();
-
-                  const html =
-                    document.documentElement;
-
-                  const isDark =
-                    html.classList.contains('dark');
-
-                  if (isDark) {
-                    html.classList.remove('dark');
-                    localStorage.setItem(
-                      'theme',
-                      'light'
-                    );
-                  } else {
-                    html.classList.add('dark');
-                    localStorage.setItem(
-                      'theme',
-                      'dark'
-                    );
-                  }
-                });
-              });
-            };
-
-            setupThemeButtons();
-
-            const observer =
-              new MutationObserver(() => {
-                setupThemeButtons();
-              });
-
-            observer.observe(document.body, {
-              childList: true,
-              subtree: true
+              updateIcon();
             });
-          });
+
+            updateIcon();
+          })();
         </script>
 
-        </head>
+        </body>
         `
       );
 
@@ -177,7 +151,7 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
-    // Assets
+    // Assets = stream direto
     res.setHeader('Content-Type', contentType);
 
     if (response.body) {
