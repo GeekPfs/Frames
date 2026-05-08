@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const url = `https://technological-marten.super.site/${req.url}`;
+  const url = `https://wisp.super.site/${req.url}`;
 
   try {
     const response = await fetch(url);
@@ -21,8 +21,8 @@ export default async function handler(req, res) {
     );
 
     // Corrige URLs de recursos para serem absolutos
-    body = body.replace(/href="\/(?!\/)/g, 'href="https://technological-marten.super.site/')
-               .replace(/src="\/(?!\/)/g, 'src="https://technological-marten.super.site/');
+    body = body.replace(/href="\/(?!\/)/g, 'href="https://wisp.super.site/')
+               .replace(/src="\/(?!\/)/g, 'src="https://wisp.super.site/');
 
     res.setHeader('Content-Type', 'text/html');
     res.setHeader('Access-Control-Allow-Origin', '*'); // Adiciona cabeçalho CORS
