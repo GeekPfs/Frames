@@ -25,7 +25,7 @@ export default async function handler(req, res) {
       'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
-    // assets
+    // cache agressivo para assets
     if (
       contentType.includes('javascript') ||
       contentType.includes('css') ||
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // corrige assets relativos
+      // assets relativos
       body = body.replace(
         /(src|href)="\/(?!\/)/g,
         `$1="${origin}/`
@@ -84,6 +84,45 @@ export default async function handler(req, res) {
 
             color:
               var(--text-dark) !important;
+          }
+
+          /* fade simples */
+
+          html {
+            animation:
+              pageFade .25s ease;
+          }
+
+          body {
+            animation:
+              pageFade .25s ease;
+          }
+
+          .notion-frame,
+          .notion-page,
+          .notion-scroller,
+          .notion-collection_view,
+          .notion-column-list,
+          .notion-text,
+          .notion-image,
+          .notion-header,
+          .notion-navbar {
+            animation:
+              pageFade .3s ease;
+          }
+
+          @keyframes pageFade {
+            from {
+              opacity: 0;
+              transform:
+                translateY(4px);
+            }
+
+            to {
+              opacity: 1;
+              transform:
+                translateY(0);
+            }
           }
 
           .super-badge,
@@ -152,7 +191,7 @@ export default async function handler(req, res) {
             const html =
               document.documentElement;
 
-            // força dark inicial
+            // tema inicial
             html.classList.remove(
               'theme-light'
             );
