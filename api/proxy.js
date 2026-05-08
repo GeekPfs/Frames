@@ -2,16 +2,17 @@ export default async function handler(req, res) {
   try {
     const origin = 'https://wisp.super.site';
 
-    // Remove prefixo da API
+    // remove /api/proxy da URL
     const path =
       req.url.replace(/^\/api\/proxy/, '') || '/';
 
     const targetUrl = `${origin}${path}`;
 
-    // Busca página original
+    // request original
     const response = await fetch(targetUrl, {
       headers: {
-        'User-Agent': req.headers['user-agent'] || '',
+        'User-Agent':
+          req.headers['user-agent'] || '',
       },
     });
 
@@ -20,29 +21,29 @@ export default async function handler(req, res) {
 
     res.status(response.status);
 
-    // Cache CDN
+    // cache CDN
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
-    // HTML
+    // páginas HTML
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // Corrige assets relativos
+      // corrige assets relativos
       body = body.replace(
         /(src|href)="\/(?!\/)/g,
         `$1="${origin}/`
       );
 
-      // Navegação interna continua no proxy
+      // mantém navegação no proxy
       body = body.replace(
         /<a([^>]+)href="https:\/\/wisp\.super\.site(.*?)"/g,
         '<a$1href="/api/proxy$2"'
       );
 
-      // Remove badge + adiciona botão de tema
+      // injeta estilos + botão de tema
       body = body.replace(
         '</body>',
         `
@@ -66,8 +67,8 @@ export default async function handler(req, res) {
             width: 32px;
             height: 32px;
 
-            border: none;
             border-radius: 999px;
+            border: 1px solid var(--color-border-default);
 
             display: flex;
             align-items: center;
@@ -75,16 +76,18 @@ export default async function handler(req, res) {
 
             cursor: pointer;
 
-            background: transparent;
+            color: inherit;
+            background: var(--color-bg-secondary);
 
             transition:
               background .2s ease,
               transform .2s ease,
-              opacity .2s ease;
+              opacity .2s ease,
+              border-color .2s ease;
           }
 
           #theme-toggle:hover {
-            background: rgba(127,127,127,.12);
+            background: var(--color-bg-hover);
             transform: scale(1.05);
           }
 
@@ -95,14 +98,6 @@ export default async function handler(req, res) {
             stroke: currentColor;
             fill: none;
             stroke-width: 2;
-          }
-
-          html.theme-dark #theme-toggle {
-            color: rgba(255,255,255,.85);
-          }
-
-          html.theme-light #theme-toggle {
-            color: rgba(0,0,0,.75);
           }
         </style>
 
@@ -121,6 +116,7 @@ export default async function handler(req, res) {
                 requestAnimationFrame(
                   injectButton
                 );
+
                 return;
               }
 
@@ -138,7 +134,8 @@ export default async function handler(req, res) {
                   'button'
                 );
 
-              button.id = 'theme-toggle';
+              button.id =
+                'theme-toggle';
 
               const icon =
                 document.createElementNS(
@@ -174,11 +171,12 @@ export default async function handler(req, res) {
               }
 
               function updateIcon() {
-                if (
+                const isDark =
                   html.classList.contains(
                     'theme-dark'
-                  )
-                ) {
+                  );
+
+                if (isDark) {
                   setSun();
                 } else {
                   setMoon();
@@ -188,27 +186,20 @@ export default async function handler(req, res) {
               button.addEventListener(
                 'click',
                 () => {
-                  if (
+                  const isDark =
                     html.classList.contains(
                       'theme-dark'
-                    )
-                  ) {
-                    html.classList.remove(
-                      'theme-dark'
                     );
 
-                    html.classList.add(
-                      'theme-light'
-                    );
-                  } else {
-                    html.classList.remove(
-                      'theme-light'
-                    );
+                  html.classList.toggle(
+                    'theme-dark',
+                    !isDark
+                  );
 
-                    html.classList.add(
-                      'theme-dark'
-                    );
-                  }
+                  html.classList.toggle(
+                    'theme-light',
+                    isDark
+                  );
 
                   updateIcon();
                 }
@@ -235,7 +226,7 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
-    // Assets
+    // assets
     res.setHeader(
       'Content-Type',
       contentType
@@ -246,9 +237,9 @@ export default async function handler(req, res) {
     } else {
       res.end();
     }
-
   } catch (err) {
     console.error(err);
+
     res
       .status(500)
       .send('Internal Server Error');
