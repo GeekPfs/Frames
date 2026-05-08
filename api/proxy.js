@@ -23,69 +23,114 @@ export default async function handler(req, res) {
       'public, s-maxage=86400, stale-while-revalidate=604800'
     );
 
-    // Só HTML
+    // HTML
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // Injeta SEM alterar estrutura original
+      // Corrige assets
+      body = body.replace(
+        /(src|href)="\/(?!\/)/g,
+        `$1="${origin}/`
+      );
+
+      // Remove badge + corrige tema
       body = body.replace(
         '</head>',
         `
-          <base href="${origin}/">
+        <style>
+          .super-badge,
+          a[href*="super.so"],
+          a[href*="super.site"][style*="position: fixed"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+          }
+        </style>
 
-          <style>
-            .super-badge,
-            a[href*="super.so"],
-            a[href*="super.site"][style*="position: fixed"] {
-              display: none !important;
-              opacity: 0 !important;
-              pointer-events: none !important;
+        <script>
+          // Corrige toggle de tema
+          (() => {
+            const applyTheme = () => {
+              const saved =
+                localStorage.getItem('theme');
+
+              if (
+                saved === 'dark' ||
+                document.documentElement.classList.contains('dark')
+              ) {
+                document.documentElement.classList.add('dark');
+              } else {
+                document.documentElement.classList.remove('dark');
+              }
+            };
+
+            applyTheme();
+
+            // Observa mudanças do tema
+            const observer = new MutationObserver(() => {
+              const dark =
+                document.documentElement.classList.contains('dark');
+
+              localStorage.setItem(
+                'theme',
+                dark ? 'dark' : 'light'
+              );
+            });
+
+            observer.observe(
+              document.documentElement,
+              {
+                attributes: true,
+                attributeFilter: ['class']
+              }
+            );
+          })();
+
+          // Navegação pelo proxy
+          document.addEventListener('click', e => {
+            const a = e.target.closest('a');
+
+            if (!a) return;
+
+            const href = a.getAttribute('href');
+
+            if (!href) return;
+
+            // externos
+            if (
+              href.startsWith('http') &&
+              !href.includes('wisp.super.site')
+            ) {
+              return;
             }
-          </style>
 
-          <script>
-            (() => {
-              document.addEventListener('click', e => {
-                const a = e.target.closest('a');
+            // especiais
+            if (
+              href.startsWith('#') ||
+              href.startsWith('mailto:') ||
+              href.startsWith('tel:')
+            ) {
+              return;
+            }
 
-                if (!a) return;
+            e.preventDefault();
 
-                const href = a.getAttribute('href');
+            let path = href;
 
-                if (!href) return;
+            if (
+              href.startsWith('https://wisp.super.site')
+            ) {
+              path = href.replace(
+                'https://wisp.super.site',
+                ''
+              );
+            }
 
-                // ignora externos
-                if (
-                  href.startsWith('http') &&
-                  !href.includes('wisp.super.site')
-                ) return;
-
-                // ignora especiais
-                if (
-                  href.startsWith('#') ||
-                  href.startsWith('mailto:') ||
-                  href.startsWith('tel:')
-                ) return;
-
-                e.preventDefault();
-
-                let path = href;
-
-                if (
-                  href.startsWith('https://wisp.super.site')
-                ) {
-                  path = href.replace(
-                    'https://wisp.super.site',
-                    ''
-                  );
-                }
-
-                history.pushState({}, '', '/api/proxy' + path);
-
-                location.reload();
-              });
-            })();
-          </script>
+            window.location.href =
+              '/api/proxy' + path;
+          });
+        </script>
 
         </head>
         `
@@ -99,7 +144,7 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
-    // Assets sem modificar
+    // Assets
     res.setHeader('Content-Type', contentType);
 
     if (response.body) {
