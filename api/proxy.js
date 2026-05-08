@@ -27,7 +27,13 @@ export default async function handler(req, res) {
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
-      // Remove badge
+      // Corrige assets
+      body = body.replace(
+        /(src|href)="\/(?!\/)/g,
+        `$1="${origin}/`
+      );
+
+      // Injeta CSS + script
       body = body.replace(
         '</head>',
         `
@@ -41,20 +47,52 @@ export default async function handler(req, res) {
             pointer-events: none !important;
           }
         </style>
+
+        <script>
+          document.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+
+            if (!link) return;
+
+            const href = link.getAttribute('href');
+
+            if (!href) return;
+
+            // Ignora externos
+            if (
+              href.startsWith('http') &&
+              !href.includes('wisp.super.site')
+            ) {
+              return;
+            }
+
+            // Ignora anchors/mailto/etc
+            if (
+              href.startsWith('#') ||
+              href.startsWith('mailto:') ||
+              href.startsWith('tel:')
+            ) {
+              return;
+            }
+
+            e.preventDefault();
+
+            let path = href;
+
+            if (href.startsWith('https://wisp.super.site')) {
+              path = href.replace(
+                'https://wisp.super.site',
+                ''
+              );
+            }
+
+            window.location.href =
+              '/api/proxy' + path;
+          });
+        </script>
+
         </head>
         `
-      );
-
-      // Faz TODOS assets virarem absolutos
-      body = body.replace(
-        /(src|href)="\/(?!\/)/g,
-        `$1="${origin}/`
-      );
-
-      // Navegação interna continua no proxy
-      body = body.replace(
-        /<a([^>]+)href="https:\/\/wisp\.super\.site(.*?)"/g,
-        '<a$1href="/api/proxy$2"'
       );
 
       res.setHeader(
@@ -65,7 +103,7 @@ export default async function handler(req, res) {
       return res.send(body);
     }
 
-    // Stream de assets
+    // Assets
     res.setHeader('Content-Type', contentType);
 
     if (response.body) {
