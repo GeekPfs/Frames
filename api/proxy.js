@@ -390,4 +390,3 @@ export default async function handler(req, res) {
       .send('Internal Server Error');
   }
 }
-}
