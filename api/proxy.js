@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     res.status(response.status);
 
-    // cache padrão
+    // cache
     res.setHeader(
       'Cache-Control',
       'public, s-maxage=86400, stale-while-revalidate=604800'
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       );
     }
 
-    // HTML
+    // html
     if (contentType.includes('text/html')) {
       let body = await response.text();
 
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
         `$1="${origin}/`
       );
 
-      // CSS
+      // css
       body = body.replace(
         '</head>',
         `
@@ -56,11 +56,9 @@ export default async function handler(req, res) {
           :root {
             --bg-light: #f0f0f0;
             --text-light: #111111;
-            --border-light: rgba(0,0,0,.12);
 
             --bg-dark: #111111;
             --text-dark: #f0f0f0;
-            --border-dark: rgba(255,255,255,.12);
           }
 
           html,
@@ -69,10 +67,6 @@ export default async function handler(req, res) {
               background .25s ease,
               color .25s ease;
           }
-
-          /* =========================
-             TEMA LIGHT
-          ========================= */
 
           html.theme-light,
           html.theme-light body {
@@ -83,41 +77,12 @@ export default async function handler(req, res) {
               var(--text-light) !important;
           }
 
-          html.theme-light .notion-frame,
-          html.theme-light .notion-page,
-          html.theme-light .notion-scroller,
-          html.theme-light .notion-app-inner,
-          html.theme-light .notion-text,
-          html.theme-light .notion-column-list,
-          html.theme-light .notion-column,
-          html.theme-light .notion-collection_view,
-          html.theme-light .notion-header,
-          html.theme-light .notion-navbar {
-            background:
-              var(--bg-light) !important;
-
-            color:
-              var(--text-light) !important;
-          }
+          /* corrige elementos invisíveis no light mode */
 
           html.theme-light .notion-divider {
-            background:
-              var(--border-light) !important;
+            background: #d0d0d0 !important;
+            border-color: #d0d0d0 !important;
           }
-
-          html.theme-light .notion-column {
-            border-color:
-              var(--border-light) !important;
-          }
-
-          html.theme-light a {
-            color:
-              #2563eb !important;
-          }
-
-          /* =========================
-             TEMA DARK
-          ========================= */
 
           html.theme-dark,
           html.theme-dark body {
@@ -128,44 +93,18 @@ export default async function handler(req, res) {
               var(--text-dark) !important;
           }
 
-          html.theme-dark .notion-frame,
-          html.theme-dark .notion-page,
-          html.theme-dark .notion-scroller,
-          html.theme-dark .notion-app-inner,
-          html.theme-dark .notion-text,
-          html.theme-dark .notion-column-list,
-          html.theme-dark .notion-column,
-          html.theme-dark .notion-collection_view,
-          html.theme-dark .notion-header,
-          html.theme-dark .notion-navbar {
-            background:
-              var(--bg-dark) !important;
+          /* fade simples */
 
-            color:
-              var(--text-dark) !important;
+          html {
+            animation:
+              pageFade .25s ease;
           }
 
-          html.theme-dark .notion-divider {
-            background:
-              var(--border-dark) !important;
+          body {
+            animation:
+              pageFade .25s ease;
           }
 
-          html.theme-dark .notion-column {
-            border-color:
-              var(--border-dark) !important;
-          }
-
-          html.theme-dark a {
-            color:
-              #60a5fa !important;
-          }
-
-          /* =========================
-             FADE
-          ========================= */
-
-          html,
-          body,
           .notion-frame,
           .notion-page,
           .notion-scroller,
@@ -193,19 +132,11 @@ export default async function handler(req, res) {
             }
           }
 
-          /* =========================
-             REMOVE BADGES
-          ========================= */
-
           .super-badge,
           a[href*="super.so"],
           a[href*="super.site"][style*="position: fixed"] {
             display: none !important;
           }
-
-          /* =========================
-             BOTÃO TEMA
-          ========================= */
 
           .notion-navbar__actions {
             display: flex;
@@ -258,7 +189,7 @@ export default async function handler(req, res) {
         `
       );
 
-      // JS
+      // js
       body = body.replace(
         '</body>',
         `
@@ -267,21 +198,13 @@ export default async function handler(req, res) {
             const html =
               document.documentElement;
 
-            // tema salvo
-            const savedTheme =
-              localStorage.getItem(
-                'theme'
-              ) || 'dark';
-
+            // tema inicial
             html.classList.remove(
-              'theme-light',
-              'theme-dark'
+              'theme-light'
             );
 
             html.classList.add(
-              savedTheme === 'light'
-                ? 'theme-light'
-                : 'theme-dark'
+              'theme-dark'
             );
 
             // navegação interna
@@ -400,35 +323,36 @@ export default async function handler(req, res) {
                       'theme-dark'
                     );
 
+                  // dark -> light
                   if (dark) {
-                    html.classList.remove(
-                      'theme-dark'
-                    );
+                    html.style.transition =
+                      'background .25s ease, color .25s ease';
 
-                    html.classList.add(
-                      'theme-light'
-                    );
+                    setTimeout(() => {
+                      html.classList.remove(
+                        'theme-dark'
+                      );
 
-                    localStorage.setItem(
-                      'theme',
-                      'light'
-                    );
-                  } else {
-                    html.classList.remove(
-                      'theme-light'
-                    );
+                      html.classList.add(
+                        'theme-light'
+                      );
 
-                    html.classList.add(
-                      'theme-dark'
-                    );
-
-                    localStorage.setItem(
-                      'theme',
-                      'dark'
-                    );
+                      updateIcon();
+                    }, 120);
                   }
 
-                  updateIcon();
+                  // light -> dark
+                  else {
+                    html.classList.remove(
+                      'theme-light'
+                    );
+
+                    html.classList.add(
+                      'theme-dark'
+                    );
+
+                    updateIcon();
+                  }
                 }
               );
 
