@@ -77,13 +77,6 @@ export default async function handler(req, res) {
               var(--text-light) !important;
           }
 
-          /* corrige elementos invisíveis no light mode */
-
-          html.theme-light .notion-divider {
-            background: #d0d0d0 !important;
-            border-color: #d0d0d0 !important;
-          }
-
           html.theme-dark,
           html.theme-dark body {
             background:
@@ -396,4 +389,5 @@ export default async function handler(req, res) {
       .status(500)
       .send('Internal Server Error');
   }
+}
 }
